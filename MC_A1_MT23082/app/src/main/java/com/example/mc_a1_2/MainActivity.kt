@@ -301,40 +301,80 @@ fun ColumnList(currentItemIndex: Int, listItem: List<String>, visitedItems: List
                 .padding(horizontal = 16.dp)
                 .align(Alignment.Center)
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center
-            ) {
-                itemsIndexed(listItem) { index, item ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 1.6.dp)
-                    ) {
-                        if (index < currentItemIndex && !visitedItems[index]) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowForward,
-                                contentDescription = "Visited Item",
-                                tint = Color.Red,
-                                modifier = Modifier.padding(end = 5.dp)
-                            )
+            if (listItem.size > 10) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    itemsIndexed(listItem) { index, item ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 1.6.dp)
+                        ) {
+                            if (index < currentItemIndex && !visitedItems[index]) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = "Visited Item",
+                                    tint = Color.Red,
+                                    modifier = Modifier.padding(end = 5.dp)
+                                )
+                            }
+                            if (index == currentItemIndex && !visitedItems[index]) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = "Current Item",
+                                    tint = Color.Yellow,
+                                    modifier = Modifier.padding(end = 5.dp)
+                                )
+                            }
+                            if (index > currentItemIndex && !visitedItems[index]) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = "Upcoming Item",
+                                    tint = Color.Green,
+                                    modifier = Modifier.padding(end = 5.dp)
+                                )
+                            }
+                            Text(text = item, style = TextStyle(fontSize = 15.sp))
                         }
-                        if (index == currentItemIndex && !visitedItems[index]) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowForward,
-                                contentDescription = "Current Item",
-                                tint = Color.Yellow,
-                                modifier = Modifier.padding(end = 5.dp)
-                            )
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    listItem.forEachIndexed { index, item ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 1.6.dp)
+                        ) {
+                            if (index < currentItemIndex && !visitedItems[index]) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = "Visited Item",
+                                    tint = Color.Red,
+                                    modifier = Modifier.padding(end = 5.dp)
+                                )
+                            }
+                            if (index == currentItemIndex && !visitedItems[index]) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = "Current Item",
+                                    tint = Color.Yellow,
+                                    modifier = Modifier.padding(end = 5.dp)
+                                )
+                            }
+                            if (index > currentItemIndex && !visitedItems[index]) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = "Upcoming Item",
+                                    tint = Color.Green,
+                                    modifier = Modifier.padding(end = 5.dp)
+                                )
+                            }
+                            Text(text = item, style = TextStyle(fontSize = 15.sp))
                         }
-                        if (index > currentItemIndex && !visitedItems[index]) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowForward,
-                                contentDescription = "Upcoming Item",
-                                tint = Color.Green,
-                                modifier = Modifier.padding(end = 5.dp)
-                            )
-                        }
-                        Text(text = item, style = TextStyle(fontSize = 15.sp))
                     }
                 }
             }
