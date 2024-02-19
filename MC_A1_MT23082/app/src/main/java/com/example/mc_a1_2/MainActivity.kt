@@ -181,7 +181,7 @@ fun ProgressDisplayBox(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         Text(
-            text = "Distance b/w next Station: ${convertToUnits(upcomingProgress-currentProgress)}",
+            text = "Distance b/w Stations: ${convertToUnits(upcomingProgress-currentProgress)}",
             color = textColor,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -217,7 +217,7 @@ fun CustomToggleButton(text: String, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(10.dp)
+            .padding(5.dp)
     ) {
         Button(
             onClick = onClick,
@@ -247,7 +247,7 @@ fun NextButton(text: String, progress: Int, itemCount: Int, onClick: (Int) -> Un
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(10.dp)
+            .padding(5.dp)
     ) {
         Button(
             onClick = {
@@ -271,7 +271,7 @@ fun CustomButtonCheckProgress(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(10.dp)
+            .padding(5.dp)
     ) {
         Button(
             onClick = {
@@ -292,7 +292,7 @@ fun ColumnList(currentItemIndex: Int, listItem: List<String>, visitedItems: List
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(10.dp)
+            .padding(5.dp)
             .border(3.dp, Color.White, shape = RoundedCornerShape(16.dp))
     ) {
         Box(
@@ -308,14 +308,14 @@ fun ColumnList(currentItemIndex: Int, listItem: List<String>, visitedItems: List
                 itemsIndexed(listItem) { index, item ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        modifier = Modifier.padding(vertical = 1.6.dp)
                     ) {
                         if (index < currentItemIndex && !visitedItems[index]) {
                             Icon(
                                 imageVector = Icons.Default.ArrowForward,
                                 contentDescription = "Visited Item",
                                 tint = Color.Red,
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.padding(end = 5.dp)
                             )
                         }
                         if (index == currentItemIndex && !visitedItems[index]) {
@@ -323,7 +323,7 @@ fun ColumnList(currentItemIndex: Int, listItem: List<String>, visitedItems: List
                                 imageVector = Icons.Default.ArrowForward,
                                 contentDescription = "Current Item",
                                 tint = Color.Yellow,
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.padding(end = 5.dp)
                             )
                         }
                         if (index > currentItemIndex && !visitedItems[index]) {
@@ -331,10 +331,10 @@ fun ColumnList(currentItemIndex: Int, listItem: List<String>, visitedItems: List
                                 imageVector = Icons.Default.ArrowForward,
                                 contentDescription = "Upcoming Item",
                                 tint = Color.Green,
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.padding(end = 5.dp)
                             )
                         }
-                        Text(text = item, style = TextStyle(fontSize = 20.sp))
+                        Text(text = item, style = TextStyle(fontSize = 15.sp))
                     }
                 }
             }
