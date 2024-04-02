@@ -29,6 +29,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.DecimalFormat
 
 class MainActivity : ComponentActivity() {
     private val retrofit = Retrofit.Builder()
@@ -79,8 +80,41 @@ private fun fetchWeatherData(
             val maxTemp = response.daily.temperature2mMax.firstOrNull()?.toString() ?: "N/A"
             val minTemp = response.daily.temperature2mMin.firstOrNull()?.toString() ?: "N/A"
 
-            // Invoke the callback with the extracted temperatures
-            callback(maxTemp, minTemp)
+            // If N/A is encountered, calculate the average of the last 3 days' temperatures
+            val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(date)
+            val lastThreeDays = Calendar.getInstance()
+            lastThreeDays.time = formattedDate
+            var sumMax = 0.0
+            var sumMin = 0.0
+            var validCount = 0
+
+            for (i in 0 until 3) {
+                lastThreeDays.add(Calendar.DATE, -1)
+                val prevDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(lastThreeDays.time)
+                val prevResponse = withContext(Dispatchers.IO) {
+                    weatherApiService.getWeatherData(
+                        latitude = 52.52,
+                        longitude = 13.419998,
+                        startDate = prevDate,
+                        endDate = prevDate
+                    )
+                }
+                prevResponse.daily.temperature2mMax.firstOrNull()?.let {
+                    sumMax += it
+                    validCount++
+                }
+                prevResponse.daily.temperature2mMin.firstOrNull()?.let {
+                    sumMin += it
+                    validCount++
+                }
+            }
+
+            val averageMaxTemp = if (validCount > 0) String.format("%.1f", sumMax / validCount) else "N/A"
+            val averageMinTemp = if (validCount > 0) String.format("%.1f", sumMin / validCount) else "N/A"
+
+            // Invoke the callback with the extracted temperatures or averages
+            callback(if (maxTemp == "N/A") averageMaxTemp else maxTemp,
+                if (minTemp == "N/A") averageMinTemp else minTemp)
         } catch (e: Exception) {
             // Handle any exceptions that occur during the API call
             Log.e("API_ERROR", "Error fetching weather data: ${e.message}")
@@ -88,7 +122,6 @@ private fun fetchWeatherData(
         }
     }
 }
-
 
 // Custom colors
 private val LightBlue = Color(0xFFADD8E6)
