@@ -7,10 +7,27 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,18 +36,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.weather_app.R.drawable.craiyon_003352_a_image_for_background_weather_app__day
+import androidx.compose.ui.window.Dialog
 import com.example.weather_app.ui.theme.Weather_AppTheme
-import java.text.SimpleDateFormat
-import java.util.*
-import kotlinx.coroutines.launch
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import com.example.weathera2.WeatherData
+import com.example.weathera2.WeatherDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.DecimalFormat
-
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 class MainActivity : ComponentActivity() {
     private val retrofit = Retrofit.Builder()
         .baseUrl("https://archive-api.open-meteo.com/")
@@ -51,6 +70,34 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        val startDate = "2014-03-16" // Adjust start date
+        val endDate = "2024-03-30" // Adjust end date
+
+        fetchHistoricalWeatherData(startDate, endDate, weatherApiService) { weatherDataList ->
+            // Store the fetched data in the database
+            storeWeatherDataInDatabase(weatherDataList)
+
+            printWeatherDataFromDatabase()
+        }
+    }
+
+    private fun storeWeatherDataInDatabase(weatherDataList: List<WeatherData>) {
+        coroutineScope.launch {
+            val dao = WeatherDatabase.getDatabase(applicationContext).weatherDataDao()
+            dao.insertWeatherData(weatherDataList)
+        }
+    }
+
+    private fun printWeatherDataFromDatabase() {
+        println("---------------------------------------------------------------------")
+        coroutineScope.launch {
+            val dao = WeatherDatabase.getDatabase(applicationContext).weatherDataDao()
+            val weatherDataList = dao.getAllWeatherData()
+            weatherDataList.forEach { weatherData ->
+                Log.d("WeatherData", "Location: ${weatherData.location}, Date: ${weatherData.date}, Max Temp: ${weatherData.temperatureMax}, Min Temp: ${weatherData.temperatureMin}")
+            }
+        }
+        println("---------------------------------------------------------------------")
     }
 }
 
@@ -123,6 +170,55 @@ private fun fetchWeatherData(
     }
 }
 
+private fun fetchHistoricalWeatherData(
+    startDate: String,
+    endDate: String,
+    weatherApiService: WeatherAPI,
+    callback: (List<WeatherData>) -> Unit
+) {
+    coroutineScope.launch {
+        try {
+            val weatherDataList = mutableListOf<WeatherData>()
+
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val calendar = Calendar.getInstance()
+            calendar.time = sdf.parse(startDate) ?: Date()
+
+            while (calendar.time.before(sdf.parse(endDate) ?: Date())) {
+                val formattedDate = sdf.format(calendar.time)
+                val response = withContext(Dispatchers.IO) {
+                    weatherApiService.getWeatherData(
+                        latitude = 52.52,
+                        longitude = 13.419998,
+                        startDate = formattedDate,
+                        endDate = formattedDate
+                    )
+                }
+
+                val maxTemp = response.daily.temperature2mMax.firstOrNull() ?: Double.NaN
+                val minTemp = response.daily.temperature2mMin.firstOrNull() ?: Double.NaN
+
+                weatherDataList.add(
+                    WeatherData(
+                        location = "Berlin", // or any other location
+                        date = formattedDate,
+                        temperatureMax = maxTemp,
+                        temperatureMin = minTemp
+                    )
+                )
+
+                calendar.add(Calendar.DATE, 1) // Move to the next date
+            }
+
+            callback(weatherDataList)
+        } catch (e: Exception) {
+            Log.e("API_ERROR", "Error fetching historical weather data: ${e.message}")
+            callback(emptyList())
+        }
+    }
+}
+
+
 // Custom colors
 private val LightBlue = Color(0xFFADD8E6)
 private val DarkBlue = Color(0xFF00008B)
@@ -133,28 +229,15 @@ fun WeatherContent(weatherApiService: WeatherAPI) {
     var maxTemperature by remember { mutableStateOf("") }
     var minTemperature by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate.time)
-        try {
-            val response = weatherApiService.getWeatherData(52.52, 13.419998, "2024-03-21", "2024-03-21")
-            println(response)
-            val firstTemperature2mMax = response.daily.temperature2mMax.firstOrNull()
-            val firstTemperature2mMin = response.daily.temperature2mMin.firstOrNull()
-            maxTemperature = firstTemperature2mMax.toString()
-            minTemperature = firstTemperature2mMin.toString()
-        } catch (e: Exception) {
-            Log.e("API_ERROR", "Error fetching weather data: ${e.message}")
-            maxTemperature = "N/A"
-            minTemperature = "N/A"
-        }
-    }
+    var showDataDialog by remember { mutableStateOf(false) }
+    var weatherDataList by remember { mutableStateOf<List<WeatherData>>(emptyList()) }
 
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
         // Background Image
         Image(
-            painter = painterResource(id = craiyon_003352_a_image_for_background_weather_app__day),
+            painter = painterResource(id = R.drawable.craiyon_003352_a_image_for_background_weather_app__day),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
@@ -165,14 +248,13 @@ fun WeatherContent(weatherApiService: WeatherAPI) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .padding(horizontal = 8.dp), // Add horizontal padding
+                .padding(horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceAround // Add space between items
+            verticalArrangement = Arrangement.SpaceAround
         ) {
             // Date Box
-            var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
             DateBox(selectedDate) { date ->
-                selectedDate = selectedDate
+                selectedDate = date
             }
 
             // Submit Button
@@ -182,19 +264,33 @@ fun WeatherContent(weatherApiService: WeatherAPI) {
                     fetchWeatherData(formattedDate, weatherApiService) { maxTemp, minTemp ->
                         maxTemperature = maxTemp
                         minTemperature = minTemp
-                        println("Max Temperature: $maxTemp, Min Temperature: $minTemp") // Print fetched weather data
+                        Log.d("WeatherData", "Max Temperature: $maxTemp, Min Temperature: $minTemp")
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Red,
-                    contentColor = Color.White
-                ),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text("Submit")
+            }
+
+            // Fetch Data Button
+            Button(
+                onClick = {
+                    val startDate = "2014-03-16" // Adjust start date
+                    val endDate = "2024-03-30" // Adjust end date
+
+                    fetchHistoricalWeatherData(startDate, endDate, weatherApiService) { data ->
+                        weatherDataList = data
+                        showDataDialog = true
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text("Fetch Data")
             }
 
             // Temperature Display Boxes
@@ -202,14 +298,58 @@ fun WeatherContent(weatherApiService: WeatherAPI) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TemperatureDisplayBox("Max: $maxTemperature", backgroundColor = DarkBlue)
+                TemperatureDisplayBox("Max: $maxTemperature", backgroundColor = Color.Blue)
                 Spacer(modifier = Modifier.width(8.dp))
-                TemperatureDisplayBox("Min: $minTemperature", backgroundColor = DarkBlue)
+                TemperatureDisplayBox("Min: $minTemperature", backgroundColor = Color.Blue)
+            }
+
+            // Data Screen Button
+            Button(
+                onClick = {
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Data Screen")
+            }
+        }
+        if (showDataDialog) {
+            WeatherDataDialog(weatherDataList) {
+                showDataDialog = false
             }
         }
     }
 }
 
+@Composable
+fun WeatherDataDialog(weatherDataList: List<WeatherData>, onClose: () -> Unit) {
+    Dialog(onDismissRequest = onClose) {
+        AlertDialog(
+            onDismissRequest = onClose,
+            title = {
+                Text(text = "Weather Data")
+            },
+            text = {
+                Column {
+                    weatherDataList.forEach { weatherData ->
+                        Text(
+                            text = "Location: ${weatherData.location}, Date: ${weatherData.date}, Max Temp: ${weatherData.temperatureMax}, Min Temp: ${weatherData.temperatureMin}"
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onClose
+                ) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+}
 @Composable
 fun DateBox(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
     var showDialog by remember { mutableStateOf(false) }
