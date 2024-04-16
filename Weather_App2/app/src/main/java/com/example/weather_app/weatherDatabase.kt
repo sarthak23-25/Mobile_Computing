@@ -11,7 +11,6 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-
 @Entity(tableName = "weather_data")
 data class WeatherData(
     @PrimaryKey(autoGenerate = true)
@@ -25,7 +24,7 @@ data class WeatherData(
 @Dao
 interface WeatherDataDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertWeatherData(weatherData: List<WeatherData>)
+    suspend fun insertWeatherData(weatherData: WeatherData)
 
     @Query("SELECT * FROM weather_data")
     suspend fun getAllWeatherData(): List<WeatherData>
@@ -61,4 +60,3 @@ abstract class WeatherDatabase : RoomDatabase() {
         }
     }
 }
-
