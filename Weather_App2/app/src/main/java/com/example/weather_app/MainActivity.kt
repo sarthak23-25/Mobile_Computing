@@ -208,6 +208,8 @@ fun WeatherMainContentScreen(weatherApiService: WeatherAPI, dao: WeatherDataDao,
     var showDataDialog by remember { mutableStateOf(false) }
     var weatherDataList by remember { mutableStateOf<List<WeatherData>>(emptyList()) }
     var weatherDataListDialog by remember { mutableStateOf<List<WeatherData>>(emptyList()) }
+    var averageMaxTemp by remember { mutableStateOf("") }
+    var averageMinTemp by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -263,27 +265,6 @@ fun WeatherMainContentScreen(weatherApiService: WeatherAPI, dao: WeatherDataDao,
 
             Button(
                 onClick = {
-                    val currentDate = Calendar.getInstance() // Get current date
-                    val endDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(currentDate.time)
-
-                    val startDateCalendar = Calendar.getInstance()
-                    startDateCalendar.add(Calendar.YEAR, -10) // Subtract 10 years from current date
-                    val startDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(startDateCalendar.time)
-
-                    fetchHistoricalWeatherData(startDate, endDate, latitude.toDouble(), longitude.toDouble(), weatherApiService, dao) { data ->
-                        weatherDataList = data
-                        showDataDialog = true
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-            ) {
-                Text("Fetch Data")
-            }
-
-            Button(
-                onClick = {
                     viewModel.fetchWeatherDataAndStore(latitude.toDouble(), longitude.toDouble())
                 },
                 modifier = Modifier
@@ -293,7 +274,6 @@ fun WeatherMainContentScreen(weatherApiService: WeatherAPI, dao: WeatherDataDao,
             ) {
                 Text("Fetch and Store Data")
             }
-
             Button(
                 onClick = {
                     // Fetch all weather data from the Room database
@@ -303,8 +283,7 @@ fun WeatherMainContentScreen(weatherApiService: WeatherAPI, dao: WeatherDataDao,
                         weatherDataList.forEach { weatherData ->
                             Log.d("WeatherData", "Location: , Date: ${weatherData.date}, Max Temp: ${weatherData.temperatureMax}, Min Temp: ${weatherData.temperatureMin}")
                         }
-                        // Set the state to show the data dialog
-                        showDataDialog = true
+
                         weatherDataListDialog = weatherDataList
                     }
                 },
@@ -314,8 +293,51 @@ fun WeatherMainContentScreen(weatherApiService: WeatherAPI, dao: WeatherDataDao,
             ) {
                 Text("Show Stored Data")
             }
+            Button(
+                onClick = {
+                    viewModel.viewModelScope.launch {
+                        // Create a separate variable to hold the selected date
+                        val selectedDate1 = selectedDate
 
-            var weatherDataListDialog by remember { mutableStateOf<List<WeatherData>>(emptyList()) }
+                        // Calculate the date 10 years ago from the selected future date
+                        val tenYearsAgo = selectedDate1.clone() as Calendar
+                        tenYearsAgo.add(Calendar.YEAR, -10)
+                        val tenYearsAgoDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(tenYearsAgo.time)
+
+                        // Check if there is any data available for the date 10 years ago
+                        val weatherDataListTenYearsAgo = dao.getAllWeatherData()
+                        val dataForTenYearsAgoDate = weatherDataListTenYearsAgo.filter { it.date == tenYearsAgoDateString }
+
+                        if (dataForTenYearsAgoDate.isNotEmpty()) {
+                            // Calculate average temperature for the past 10 years
+                            val averageWeatherDataTenYearsAgo = dao.avgWeatherData(tenYearsAgoDateString)
+                            val averageMaxTempTenYearsAgo = String.format("%.1f", averageWeatherDataTenYearsAgo.avgMax)
+                            val averageMinTempTenYearsAgo = String.format("%.1f", averageWeatherDataTenYearsAgo.avgMin)
+                            Log.d("AverageWeatherData", "Average Max Temp (10 years ago): ${averageWeatherDataTenYearsAgo.avgMax}, Average Min Temp (10 years ago): ${averageWeatherDataTenYearsAgo.avgMin}")
+
+                            // Assign the average temperatures for the past date to the corresponding variables
+                            averageMaxTemp = averageMaxTempTenYearsAgo
+                            averageMinTemp = averageMinTempTenYearsAgo
+                        } else {
+                            // Handle the case where no data is available for the date 10 years ago
+                            Log.d("AverageWeatherData", "No data available for the date 10 years ago")
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text("Show Average Data")
+            }
+
+            // Display average temperature
+            Row {
+                TemperatureDisplayBox("Average Max: $averageMaxTemp", backgroundColor = Color.Black)
+                Spacer(modifier = Modifier.width(38.dp))
+                TemperatureDisplayBox("Average Min: $averageMinTemp", backgroundColor = Color.Black)
+            }
+//            var weatherDataListDialog by remember { mutableStateOf<List<WeatherData>>(emptyList()) }
 
             if (showDataDialog) {
                 WeatherDataDownloadDialog(weatherDataListDialog) {
@@ -405,7 +427,7 @@ fun DateBox(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
 @Composable
 fun DateDialog(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
     val context = LocalContext.current
-    val calendar = remember { mutableStateOf(selectedDate) }
+    val calendar = remember { mutableStateOf(selectedDate.clone() as Calendar) }
 
     DatePickerDialog(
         context,

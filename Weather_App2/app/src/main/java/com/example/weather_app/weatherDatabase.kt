@@ -21,6 +21,10 @@ data class WeatherData(
     val temperatureMin: Double
 )
 
+data class AverageWeatherData(
+    val avgMax: Double,
+    val avgMin: Double
+)
 @Dao
 interface WeatherDataDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -29,14 +33,9 @@ interface WeatherDataDao {
     @Query("SELECT * FROM weather_data")
     suspend fun getAllWeatherData(): List<WeatherData>
 
-    @Query("SELECT * FROM weather_data WHERE location = :location AND date LIKE :dateSuffix ORDER BY id DESC LIMIT 10")
-    suspend fun getWeatherDataByLocationAndDateSuffix(location: String, dateSuffix: String): List<WeatherData>
+    @Query("SELECT AVG(temperatureMax) as avgMax, AVG(temperatureMin) as avgMin FROM weather_data WHERE date = :date")
+    suspend fun avgWeatherData(date: String): AverageWeatherData
 
-    @Query("DELETE FROM weather_data WHERE location = :location")
-    suspend fun deleteByLocation(location: String)
-
-    @Query("SELECT EXISTS(SELECT 1 FROM weather_data WHERE location = :location AND date = :date LIMIT 1)")
-    suspend fun doesWeatherDataExist(location: String, date: String): Boolean
 }
 
 @Database(entities = [WeatherData::class], version = 1)

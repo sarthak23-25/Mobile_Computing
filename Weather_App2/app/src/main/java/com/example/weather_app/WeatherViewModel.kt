@@ -24,7 +24,7 @@ class WeatherViewModel(
 
         // Calculate startDate as currentDate - 10 years
         val startDate = Calendar.getInstance()
-        startDate.add(Calendar.YEAR, -10)
+        startDate.add(Calendar.YEAR, -3)
         val formattedStartDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(startDate.time)
 
         viewModelScope.launch {
