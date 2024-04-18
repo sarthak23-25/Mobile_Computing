@@ -19,7 +19,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,7 +42,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private val xValues = mutableListOf<Float>()
     private val yValues = mutableListOf<Float>()
     private val zValues = mutableListOf<Float>()
-
+    private lateinit var sensorDataDao: SensorDataDao
+    private lateinit var sensorDatabase: SensorDatabase
     override fun onAccuracyChanged(s: Sensor?, i: Int) {}
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -64,12 +64,26 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorDatabase = SensorDatabase.getDatabase(this)
+        sensorDataDao = sensorDatabase.SensorDataDao()
         setContent {
             MC_A3Theme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     MainActivityContent()
                 }
             }
+        }
+    }
+
+    private fun saveSensorData(x: Float, y: Float, z: Float) {
+        CoroutineScope(Dispatchers.IO).launch {
+            sensorDataDao.insertSensorData(SensorData(x = x, y = y, z = z))
+        }
+    }
+
+    private fun deleteAllSensorData() {
+        CoroutineScope(Dispatchers.IO).launch {
+            sensorDataDao.deleteAll()
         }
     }
 
@@ -97,6 +111,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         setContent {
             DisplayResult(x = xVal, y = yVal, z = zVal, false, {})
         }
+        saveSensorData(xVal, yVal, zVal)
     }
 
     private fun toggleAccelerometerActive() {
@@ -169,13 +184,6 @@ fun DisplayResult(
             )
         }
         Spacer(modifier = Modifier.height(16.dp)) // Add space between text and buttons
-
-//        StartButtonWithToast(
-//            onClick = {
-//                // Start button clicked
-//            },
-//            modifier = Modifier.size(180.dp, 40.dp)
-//        )
 
         Spacer(modifier = Modifier.height(16.dp))
         Button(
