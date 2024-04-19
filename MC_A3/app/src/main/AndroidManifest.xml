@@ -23,6 +23,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".GraphScreens"
+            android:exported="false"
+            android:label="@string/title_activity_graph_screens"
+            android:theme="@style/Theme.MC_A3">
+        </activity>
     </application>
 
 </manifest>

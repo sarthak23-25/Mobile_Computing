@@ -1,6 +1,7 @@
 package com.example.mc_a3
 
 import android.content.Context
+import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -11,8 +12,14 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
@@ -28,12 +35,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import com.example.mc_a3.ui.theme.MC_A3Theme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 class MainActivity : ComponentActivity(), SensorEventListener {
 
     private var sensorManager: SensorManager? = null
@@ -44,6 +50,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private val zValues = mutableListOf<Float>()
     private lateinit var sensorDataDao: SensorDataDao
     private lateinit var sensorDatabase: SensorDatabase
+    private var isRecording = false
+    private var latestX: Float = 0f
+    private var latestY: Float = 0f
+    private var latestZ: Float = 0f
+    private lateinit var navController: NavHostController
+
     override fun onAccuracyChanged(s: Sensor?, i: Int) {}
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -66,52 +78,66 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         sensorDatabase = SensorDatabase.getDatabase(this)
         sensorDataDao = sensorDatabase.SensorDataDao()
+
         setContent {
             MC_A3Theme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainActivityContent()
+                    MainActivityContent(latestX, latestY, latestZ)
                 }
             }
         }
     }
 
-    private fun saveSensorData(x: Float, y: Float, z: Float) {
-        CoroutineScope(Dispatchers.IO).launch {
-            sensorDataDao.insertSensorData(SensorData(x = x, y = y, z = z))
-        }
-    }
-
-    private fun deleteAllSensorData() {
-        CoroutineScope(Dispatchers.IO).launch {
-            sensorDataDao.deleteAll()
-        }
-    }
-
     @Composable
-    fun MainActivityContent() {
-        // Empty composable as the content is being displayed dynamically
-        val isAccelerometerActive = isAccelerometerActiveState.value
-        DisplayResult(
-            x = 0f,
-            y = 0f,
-            z = 0f,
-            isAccelerometerActive = isAccelerometerActive,
-            onToggleAccelerometerActive = { toggleAccelerometerActive() }
-        )
+    fun MainActivityContent(x: Float, y: Float, z: Float) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                DisplayResult(
+                    x = x,
+                    y = y,
+                    z = z,
+                    isAccelerometerActive = isAccelerometerActiveState.value,
+                    onToggleAccelerometerActive = { toggleAccelerometerActive() },
+                    onClickSave = { saveData() }
+                )
+            }
+        }
     }
 
+    private fun saveData() {
+        Toast.makeText(this, "Data Saved", Toast.LENGTH_SHORT).show()
+        CoroutineScope(Dispatchers.IO).launch {
+            for (i in xValues.indices) {
+                val x = xValues[i]
+                val y = yValues[i]
+                val z = zValues[i]
+                sensorDataDao.insertSensorData(SensorData(x = x, y = y, z = z))
+            }
+            // Clear lists after saving data
+            xValues.clear()
+            yValues.clear()
+            zValues.clear()
+        }
+    }
     private fun getAccelerometer(event: SensorEvent) {
         // Movement
         val xVal = event.values[0]
         val yVal = event.values[1]
         val zVal = event.values[2]
+        latestX = xVal
+        latestY = yVal
+        latestZ = zVal
         xValues.add(xVal)
         yValues.add(yVal)
         zValues.add(zVal)
+        printValuesToLog()
         setContent {
-            DisplayResult(x = xVal, y = yVal, z = zVal, false, {})
+            MainActivityContent(xVal, yVal, zVal) // Update MainActivityContent with the new accelerometer data
         }
-        saveSensorData(xVal, yVal, zVal)
     }
 
     private fun toggleAccelerometerActive() {
@@ -159,8 +185,10 @@ fun DisplayResult(
     z: Float,
     isAccelerometerActive: Boolean,
     onToggleAccelerometerActive: () -> Unit,
+    onClickSave: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,7 +216,7 @@ fun DisplayResult(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             enabled = true,
-            onClick = {},
+            onClick = onClickSave,
             colors = ButtonDefaults.buttonColors(
                 contentColor = Color.White,
                 containerColor = Color(0xFFFF8300)
@@ -207,7 +235,10 @@ fun DisplayResult(
         Spacer(modifier = Modifier.height(16.dp))// Add space between buttons
         Button(
             enabled = true,
-            onClick = {},
+            onClick = {
+                val intent = Intent(context, GraphScreens::class.java)
+                context.startActivity(intent)
+            },
             colors = ButtonDefaults.buttonColors(
                 contentColor = Color.White,
                 containerColor = Color(0xFF007a00)
@@ -246,45 +277,10 @@ fun DisplayResult(
     }
 }
 
-@Composable
-fun StartButtonWithToast(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current // Retrieve the current context
-    Button(
-        enabled = true,
-        onClick = {
-            CoroutineScope(Dispatchers.Main).launch {
-                delay(10000L) // Delay for 10 seconds
-                Toast.makeText(
-                    context,
-                    "Done",
-                    Toast.LENGTH_SHORT
-                ).show() // Show toast message after 10 seconds
-            }
-        },
-        colors = ButtonDefaults.buttonColors(
-            contentColor = Color.White,
-            containerColor = Color(0xFF2E5A88)
-        ),
-        border = BorderStroke(2.dp, Color.DarkGray),
-        shape = ButtonDefaults.elevatedShape,
-        modifier = modifier // Adjust size here
-    ) {
-        Text(
-            text = "Start",
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 10.sp // Decrease font size to fit the text
-        )
-    }
-}
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun GreetingPreview() {
     MC_A3Theme {
-        DisplayResult(0f, 0f, 0f, false, {})
+        DisplayResult(0f, 0f, 0f, false, {}, {})
     }
 }
