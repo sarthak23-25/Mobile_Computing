@@ -17,7 +17,8 @@ data class SensorData(
     val id: Long = 0,
     val x: Float,
     val y: Float,
-    val z: Float
+    val z: Float,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 @Dao
@@ -32,7 +33,7 @@ interface SensorDataDao {
     suspend fun getAllSensorData(): List<SensorData>
 }
 
-@Database(entities = [SensorData::class], version = 1, exportSchema = false)
+@Database(entities = [SensorData::class], version = 2, exportSchema = false)
 abstract class SensorDatabase : RoomDatabase() {
     abstract fun SensorDataDao(): SensorDataDao
 
@@ -46,7 +47,7 @@ abstract class SensorDatabase : RoomDatabase() {
                     context.applicationContext,
                     SensorDatabase::class.java,
                     "sensor_data"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }
