@@ -141,7 +141,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val x = xValues[i]
                 val y = yValues[i]
                 val z = zValues[i]
-//                val timestamp1 = timestamp + (i * 500)
                 sensorDataDao.insertSensorData(SensorData(x = x, y = y, z = z,timestamp = timestamp))
             }
             // Clear lists after saving data
@@ -244,11 +243,29 @@ fun DisplayResult(
 
         Spacer(modifier = Modifier.height(16.dp))
         Button(
+            onClick = onToggleAccelerometerActive,
+            colors = ButtonDefaults.buttonColors(
+                contentColor = Color.White,
+                containerColor = if (isAccelerometerActive) Color.Red else Color(0xFFFF8300)
+            ),
+            border = BorderStroke(2.dp, Color.DarkGray),
+            shape = ButtonDefaults.elevatedShape,
+            modifier = Modifier.size(180.dp, 40.dp)
+        ) {
+            Text(
+                text = if (isAccelerometerActive) "Stop" else "Start",
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 10.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
             enabled = true,
             onClick = onClickSave,
             colors = ButtonDefaults.buttonColors(
                 contentColor = Color.White,
-                containerColor = Color(0xFFFF8300)
+                containerColor = Color(0xFF2E5A88)
             ),
             border = BorderStroke(2.dp, Color.DarkGray),
             shape = ButtonDefaults.elevatedShape,
@@ -285,31 +302,12 @@ fun DisplayResult(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onToggleAccelerometerActive,
-            colors = ButtonDefaults.buttonColors(
-                contentColor = Color.White,
-                containerColor = if (isAccelerometerActive) Color.Red else Color(0xFF2E5A88)
-            ),
-            border = BorderStroke(2.dp, Color.DarkGray),
-            shape = ButtonDefaults.elevatedShape,
-            modifier = Modifier.size(180.dp, 40.dp)
-        ) {
-            Text(
-                text = if (isAccelerometerActive) "Stop" else "Start",
-                fontStyle = FontStyle.Italic,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 10.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
         Button(
             enabled = true,
             onClick = onClickSave,
             colors = ButtonDefaults.buttonColors(
                 contentColor = Color.White,
-                containerColor = Color(0xFFFF8300)
+                containerColor = Color.Cyan
             ),
             border = BorderStroke(2.dp, Color.DarkGray),
             shape = ButtonDefaults.elevatedShape,
