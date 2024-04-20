@@ -348,18 +348,18 @@ private fun prepareLineData(sensorDataList: List<SensorData>): LineData {
     return LineData(lineDataSetX, lineDataSetY, lineDataSetZ)
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Preview(showBackground = true)
-@Composable
-fun PlotGraphsPreview() {
-    MC_A3Theme {
-        // Mock sensor data list for preview
-        val sensorDataList = listOf(
-            SensorData(1, 0.5f, 0.7f, 0.3f, 1620506232877), // Example data
-            SensorData(2, 0.6f, 0.8f, 0.4f, 1620506233888),
-            SensorData(3, 0.7f, 0.9f, 0.5f, 1620506234899)
-            // Add more mock data as needed
-        )
-        LineChartExample(sensorDataList)
-    }
-}
+//@RequiresApi(Build.VERSION_CODES.O)
+//@Preview(showBackground = true)
+//@Composable
+//fun PlotGraphsPreview() {
+//    MC_A3Theme {
+//        // Mock sensor data list for preview
+//        val sensorDataList = listOf(
+//            SensorData(1, 0.5f, 0.7f, 0.3f, 0), // Example data
+//            SensorData(2, 0.6f, 0.8f, 0.4f, 1620506233888),
+//            SensorData(3, 0.7f, 0.9f, 0.5f, 1620506234899)
+//            // Add more mock data as needed
+//        )
+//        LineChartExample(sensorDataList)
+//    }
+//}

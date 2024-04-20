@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -52,6 +51,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var startTimeMillis: Long = 0
     private val xValues = mutableListOf<Float>()
     private val yValues = mutableListOf<Float>()
+    private val secarr = mutableListOf<Int>()
     private val zValues = mutableListOf<Float>()
     private lateinit var sensorDataDao: SensorDataDao
     private lateinit var sensorDatabase: SensorDatabase
@@ -60,6 +60,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var latestY: Float = 0f
     private var latestZ: Float = 0f
     private lateinit var navController: NavHostController
+    private var lastCollectionTime = 0L
+    private var seconds = 0
 
     private fun saveAllDataToCSV(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -73,7 +75,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         if (isAccelerometerActiveState.value && event!!.sensor.type == Sensor.TYPE_ACCELEROMETER) {
             getAccelerometer(event)
             val elapsedTimeMillis = System.currentTimeMillis() - startTimeMillis
-            if (elapsedTimeMillis >= 10000) { // Stop accelerometer after 10 seconds
+            if (elapsedTimeMillis >= 100000) {
                 stopAccelerometer()
             }
         }
@@ -121,14 +123,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         setContent {
             MC_A3Theme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainActivityContent(context = applicationContext,latestX, latestY, latestZ, currentTimestamp)
+                    MainActivityContent(context = applicationContext,latestX, latestY, latestZ, seconds)
                 }
             }
         }
     }
 
     @Composable
-    fun MainActivityContent(context: Context,x: Float, y: Float, z: Float, timestamp: Long) {
+    fun MainActivityContent(context: Context, x: Float, y: Float, z: Float, seconds: Int) {
         Surface(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -139,24 +141,25 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     x = x,
                     y = y,
                     z = z,
-                    timestamp = timestamp,
+                    timestamp = seconds,
                     isAccelerometerActive = isAccelerometerActiveState.value,
                     onToggleAccelerometerActive = { toggleAccelerometerActive() },
-                    onClickSave = { saveData(timestamp) },
+                    onClickSave = { saveData(seconds) },
                     onSaveAllDataToCSV = { saveAllDataToCSV(context) } // Pass saveAllDataToCSV here
                 )
             }
         }
     }
 
-    private fun saveData(timestamp: Long) {
+    private fun saveData(timestamp: Int) {
         Toast.makeText(this, "Data Saved", Toast.LENGTH_SHORT).show()
         CoroutineScope(Dispatchers.IO).launch {
             for (i in xValues.indices) {
                 val x = xValues[i]
                 val y = yValues[i]
                 val z = zValues[i]
-                sensorDataDao.insertSensorData(SensorData(x = x, y = y, z = z,timestamp = timestamp))
+                val sec = secarr[i]
+                sensorDataDao.insertSensorData(SensorData(x = x, y = y, z = z, timestamp = sec))
             }
             // Clear lists after saving data
             xValues.clear()
@@ -166,21 +169,29 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     private fun getAccelerometer(event: SensorEvent) {
-        // Movement
-        val xVal = event.values[0]
-        val yVal = event.values[1]
-        val zVal = event.values[2]
-        latestX = xVal
-        latestY = yVal
-        latestZ = zVal
-        val currentTimeMillis = System.currentTimeMillis()
-        xValues.add(xVal)
-        yValues.add(yVal)
-        zValues.add(zVal)
-        printValuesToLog()
-        setContent {
-            MainActivityContent(this,xVal, yVal, zVal, currentTimeMillis) // Update MainActivityContent with the new accelerometer data
+        val currentTime = System.currentTimeMillis()
+
+        if (currentTime - lastCollectionTime >= 500L) {
+            lastCollectionTime = currentTime
+
+            val xVal = event.values[0]
+            val yVal = event.values[1]
+            val zVal = event.values[2]
+            latestX = xVal
+            latestY = yVal
+            latestZ = zVal
+           // val currentTimeMillis = System.currentTimeMillis()
+            xValues.add(xVal)
+            yValues.add(yVal)
+            zValues.add(zVal)
+            secarr.add(seconds)
+            printValuesToLog()
+            seconds = seconds + 1
+            setContent {
+                MainActivityContent(this,xVal, yVal, zVal, seconds) // Update MainActivityContent with the new accelerometer data
+            }
         }
+
     }
 
     private fun toggleAccelerometerActive() {
@@ -203,6 +214,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             val x = xValues[i]
             val y = yValues[i]
             val z = zValues[i]
+            val sec = secarr[i]
             Log.d("AccelerometerValues", "Second $i - X: $x, Y: $y, Z: $z")
         }
     }
@@ -226,7 +238,7 @@ fun DisplayResult(
     x: Float,
     y: Float,
     z: Float,
-    timestamp: Long,
+    timestamp: Int,
     isAccelerometerActive: Boolean,
     onToggleAccelerometerActive: () -> Unit,
     onClickSave: () -> Unit,
@@ -337,13 +349,5 @@ fun DisplayResult(
                 fontSize = 10.sp // Decrease font size to fit the text
             )
         }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun GreetingPreview() {
-    MC_A3Theme {
-        DisplayResult(0f, 0f, 0f, System.currentTimeMillis(), false, {}, {}, {})
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,7 +39,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var labels: List<String>
     private lateinit var interpreter: Interpreter
     private lateinit var inputImageBuffer: ByteBuffer
-    private lateinit var imageUris: List<Uri>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,26 +48,13 @@ class MainActivity : ComponentActivity() {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = Color.White
                 ) {
                     RequestContentPermission()
                 }
             }
         }
         interpreter = Interpreter(loadModelFile())
-    }
-
-    private fun loadLabels(): List<String> {
-        try {
-            assets.open("labels.txt").use { labelsInput ->
-                val reader = labelsInput.bufferedReader()
-                val labelsList = mutableListOf<String>()
-                reader.useLines { lines -> lines.forEach { labelsList.add(it) } }
-                return labelsList
-            }
-        } catch (e: IOException) {
-            throw RuntimeException("Error loading labels file", e)
-        }
     }
 
     private fun loadModelFile(): ByteBuffer {
@@ -172,7 +159,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 Text(text = "Pick Images")
             }
-
             Button(
                 onClick = {
                     val predictions = mutableListOf<String>()
@@ -189,8 +175,6 @@ class MainActivity : ComponentActivity() {
                         // Get the label corresponding to the predicted class
                         val predictedLabel = labels[predictedClass]
                         predictions.add(predictedLabel)
-                        println(predictedLabel)
-                        println(predictions)
                     }
 
                     predictedLabels = predictions
@@ -198,6 +182,15 @@ class MainActivity : ComponentActivity() {
                 }
             ) {
                 Text(text = "Predict Label")
+            }
+            Button(
+                onClick = {
+                    imageUris = emptyList()
+                    bitmaps.clear()
+                    predictedLabels = emptyList()
+                }
+            ) {
+                Text(text = "Clear")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -218,13 +211,14 @@ class MainActivity : ComponentActivity() {
                                 .padding(bottom = 16.dp)
                         )
                     }
-
                     predictedLabel?.let {
                         Text(
                             text = "Predicted Label: $it",
                             modifier = Modifier.padding(start = 16.dp)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
