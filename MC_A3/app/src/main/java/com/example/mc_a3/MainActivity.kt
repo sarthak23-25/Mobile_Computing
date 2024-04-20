@@ -40,6 +40,7 @@ import com.example.mc_a3.ui.theme.MC_A3Theme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
@@ -60,6 +61,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var latestZ: Float = 0f
     private lateinit var navController: NavHostController
 
+    private fun saveAllDataToCSV(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val allSensorData = sensorDataDao.getAllSensorData()
+            saveToCSV(context, allSensorData)
+        }
+    }
     override fun onAccuracyChanged(s: Sensor?, i: Int) {}
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -77,25 +84,32 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         printValuesToLog()
     }
 
-    private fun saveToCSV(context: Context, sensorDataList: List<SensorData>) {
-        val fileName = "sensor_data.csv"
-        val filePath = File(context.filesDir, fileName)
+    private suspend fun saveToCSV(context: Context, sensorDataList: List<SensorData>) {
+        withContext(Dispatchers.IO) {
+            val fileName = "sensor_data.csv"
+            val filePath = File(context.filesDir, fileName)
 
-        try {
-            FileWriter(filePath).use { writer ->
-                writer.append("Timestamp,X,Y,Z\n")
-                sensorDataList.forEach { sensorData ->
-                    writer.append("${sensorData.timestamp},${sensorData.x},${sensorData.y},${sensorData.z}\n")
+            try {
+                FileWriter(filePath).use { writer ->
+                    writer.append("Timestamp,X,Y,Z\n")
+                    sensorDataList.forEach { sensorData ->
+                        writer.append("${sensorData.timestamp},${sensorData.x},${sensorData.y},${sensorData.z}\n")
+                    }
+                    writer.flush()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "CSV file saved successfully", Toast.LENGTH_SHORT).show()
+                    }
                 }
-                writer.flush()
+            } catch (e: IOException) {
+                // Log the error
+                Log.e("SaveToCSV", "Error saving CSV file: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Error saving CSV file", Toast.LENGTH_SHORT).show()
+                }
+                e.printStackTrace()
             }
-            Toast.makeText(context, "CSV file saved successfully", Toast.LENGTH_SHORT).show()
-        } catch (e: IOException) {
-            Toast.makeText(context, "Error saving CSV file", Toast.LENGTH_SHORT).show()
-            e.printStackTrace()
         }
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,14 +121,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         setContent {
             MC_A3Theme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainActivityContent(latestX, latestY, latestZ, currentTimestamp)
+                    MainActivityContent(context = applicationContext,latestX, latestY, latestZ, currentTimestamp)
                 }
             }
         }
     }
 
     @Composable
-    fun MainActivityContent(x: Float, y: Float, z: Float, timestamp: Long) {
+    fun MainActivityContent(context: Context,x: Float, y: Float, z: Float, timestamp: Long) {
         Surface(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -128,7 +142,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     timestamp = timestamp,
                     isAccelerometerActive = isAccelerometerActiveState.value,
                     onToggleAccelerometerActive = { toggleAccelerometerActive() },
-                    onClickSave = { saveData(timestamp) }
+                    onClickSave = { saveData(timestamp) },
+                    onSaveAllDataToCSV = { saveAllDataToCSV(context) } // Pass saveAllDataToCSV here
                 )
             }
         }
@@ -149,6 +164,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             zValues.clear()
         }
     }
+
     private fun getAccelerometer(event: SensorEvent) {
         // Movement
         val xVal = event.values[0]
@@ -163,7 +179,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         zValues.add(zVal)
         printValuesToLog()
         setContent {
-            MainActivityContent(xVal, yVal, zVal, currentTimeMillis) // Update MainActivityContent with the new accelerometer data
+            MainActivityContent(this,xVal, yVal, zVal, currentTimeMillis) // Update MainActivityContent with the new accelerometer data
         }
     }
 
@@ -214,6 +230,7 @@ fun DisplayResult(
     isAccelerometerActive: Boolean,
     onToggleAccelerometerActive: () -> Unit,
     onClickSave: () -> Unit,
+    onSaveAllDataToCSV: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -304,7 +321,7 @@ fun DisplayResult(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             enabled = true,
-            onClick = onClickSave,
+            onClick = onSaveAllDataToCSV,
             colors = ButtonDefaults.buttonColors(
                 contentColor = Color.White,
                 containerColor = Color.Cyan
@@ -327,6 +344,6 @@ fun DisplayResult(
 @Composable
 fun GreetingPreview() {
     MC_A3Theme {
-        DisplayResult(0f, 0f, 0f, System.currentTimeMillis(), false, {}, {})
+        DisplayResult(0f, 0f, 0f, System.currentTimeMillis(), false, {}, {}, {})
     }
 }
