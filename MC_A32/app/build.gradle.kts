@@ -66,4 +66,8 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("io.coil-kt:coil-compose:1.3.2")
+    implementation ("org.tensorflow:tensorflow-lite:2.9.0")
+    implementation("io.coil-kt:coil:1.3.2")
+
 }
