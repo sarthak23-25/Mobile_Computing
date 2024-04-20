@@ -1,5 +1,4 @@
 package com.example.mc_a32
-
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -10,9 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -48,10 +46,8 @@ class MainActivity : ComponentActivity() {
 fun MyApp() {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             RequestContentPermission()
@@ -61,20 +57,25 @@ fun MyApp() {
 
 @Composable
 fun RequestContentPermission() {
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     val context = LocalContext.current
-    val bitmap = remember { mutableStateOf<Bitmap?>(null) }
+    val bitmaps by remember { mutableStateOf(mutableListOf<Bitmap?>()) }
 
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        imageUri = uri
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri>? ->
+        uris?.let {
+            imageUris = it
+            loadBitmaps(it, context, bitmaps)
+        }
     }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth()
+        verticalArrangement = Arrangement.Top,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
     ) {
         Button(
             onClick = {
@@ -82,7 +83,7 @@ fun RequestContentPermission() {
             },
             modifier = Modifier.padding(bottom = 16.dp)
         ) {
-            Text(text = "Pick Image")
+            Text(text = "Pick Images")
         }
 
         Button(
@@ -95,24 +96,38 @@ fun RequestContentPermission() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        imageUri?.let { uri ->
-            try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                if (inputStream != null) {
-                    bitmap.value = BitmapFactory.decodeStream(inputStream)
-                    inputStream.close()
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(imageUris) { uri ->
+                val bitmap = bitmaps[imageUris.indexOf(uri)]
+                bitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(400.dp)
+                            .padding(bottom = 16.dp)
+                    )
                 }
-            } catch (e: IOException) {
-                e.printStackTrace()
             }
+        }
+    }
+}
 
-            bitmap.value?.let { bitmap ->
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(400.dp)
-                )
+private fun loadBitmaps(uris: List<Uri>, context: android.content.Context, bitmaps: MutableList<Bitmap?>) {
+    bitmaps.clear()
+    for (uri in uris) {
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            if (inputStream != null) {
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                bitmaps.add(bitmap)
+                inputStream.close()
             }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            bitmaps.add(null)
         }
     }
 }
