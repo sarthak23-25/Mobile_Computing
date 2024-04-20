@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -204,8 +205,10 @@ class MainActivity : ComponentActivity() {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(imageUris) { uri ->
-                    val bitmap = bitmaps[imageUris.indexOf(uri)]
+                itemsIndexed(imageUris) { index, uri ->
+                    val bitmap = bitmaps.getOrNull(index)
+                    val predictedLabel = predictedLabels.getOrNull(index)
+
                     bitmap?.let {
                         Image(
                             bitmap = it.asImageBitmap(),
@@ -213,6 +216,13 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .size(400.dp)
                                 .padding(bottom = 16.dp)
+                        )
+                    }
+
+                    predictedLabel?.let {
+                        Text(
+                            text = "Predicted Label: $it",
+                            modifier = Modifier.padding(start = 16.dp)
                         )
                     }
                 }
